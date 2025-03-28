@@ -38,19 +38,16 @@ public class HistoryActivity extends AppCompatActivity {
                 throw new Exception("Pas de données disponibles");
             }
 
-            // Récupérer les sols
             JSONArray solKeys = weatherManager.getSolKeys();
             if (solKeys == null) {
                 throw new Exception("Pas de sols disponibles");
             }
 
-            // Créer la liste des sols
             List<String> sols = new ArrayList<>();
             for (int i = 0; i < solKeys.length(); i++) {
                 sols.add(solKeys.getString(i));
             }
 
-            // Initialiser l'adapter
             adapter = new WeatherAdapter(this, sols);
             weatherListView.setAdapter(adapter);
 

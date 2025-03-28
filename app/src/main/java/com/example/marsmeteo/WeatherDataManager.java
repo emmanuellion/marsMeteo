@@ -2,8 +2,6 @@ package com.example.marsmeteo;
 
 import android.util.Log;
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonElement;
 import org.json.JSONObject;
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -59,7 +57,6 @@ public class WeatherDataManager {
         return null;
     }
 
-    // Méthodes utilitaires pour extraire les données
     public double getAverageTemp(String solKey) {
         try {
             JSONObject solData = getSolData(solKey);

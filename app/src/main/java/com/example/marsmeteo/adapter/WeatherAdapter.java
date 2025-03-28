@@ -34,10 +34,8 @@ public class WeatherAdapter extends ArrayAdapter<String> {
         TextView pressureText = convertView.findViewById(R.id.pressureText);
 
         if (solKey != null) {
-            // Afficher le numéro du sol
             solText.setText("Sol " + solKey);
 
-            // Afficher la température moyenne
             double avgTemp = weatherManager.getAverageTemp(solKey);
             if (!Double.isNaN(avgTemp)) {
                 tempText.setText(String.format("🌡️ %.1f°C", avgTemp));
@@ -45,7 +43,6 @@ public class WeatherAdapter extends ArrayAdapter<String> {
                 tempText.setText("🌡️ N/A");
             }
 
-            // Afficher la pression moyenne
             double avgPressure = weatherManager.getAveragePressure(solKey);
             if (!Double.isNaN(avgPressure)) {
                 pressureText.setText(String.format("🌪️ %.1f Pa", avgPressure));
@@ -53,7 +50,6 @@ public class WeatherAdapter extends ArrayAdapter<String> {
                 pressureText.setText("🌪️ N/A");
             }
 
-            // Gérer le clic sur l'élément
             convertView.setOnClickListener(v -> {
                 Intent intent = new Intent(context, DetailActivity.class);
                 intent.putExtra(DetailActivity.EXTRA_SOL, solKey);

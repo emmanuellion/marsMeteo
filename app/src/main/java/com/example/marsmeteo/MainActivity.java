@@ -14,18 +14,11 @@ import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.marsmeteo.adapter.WeatherAdapter;
 import com.example.marsmeteo.api.NasaApiClient;
-import com.example.marsmeteo.model.MarsWeatherData;
-import com.example.marsmeteo.model.MarsWeatherData.SolData;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import org.json.JSONArray;
-import org.json.JSONObject;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
@@ -114,19 +107,16 @@ public class MainActivity extends AppCompatActivity {
                         throw new IOException("Pas de données disponibles");
                     }
 
-                    // Récupérer les sols
                     JSONArray solKeys = weatherManager.getSolKeys();
                     if (solKeys == null) {
                         throw new IOException("Pas de sols disponibles");
                     }
 
-                    // Créer la liste des sols
                     final List<String> sols = new ArrayList<>();
                     for (int i = 0; i < solKeys.length(); i++) {
                         sols.add(solKeys.getString(i));
                     }
 
-                    // Mettre à jour l'UI
                     mainHandler.post(() -> {
                         loadingProgressBar.setVisibility(View.GONE);
                         weatherListView.setVisibility(View.VISIBLE);

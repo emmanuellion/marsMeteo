@@ -48,7 +48,6 @@ public class SolAdapter extends ArrayAdapter<String> {
                 return convertView;
             }
 
-            // Température
             if (solData.getAtmosphericTemp() != null) {
                 double temp = solData.getAtmosphericTemp().getAverage();
                 double tempMin = solData.getAtmosphericTemp().getMin();
@@ -59,7 +58,6 @@ public class SolAdapter extends ArrayAdapter<String> {
                 temperatureText.setText("🌡️ Température non disponible");
             }
 
-            // Pression
             if (solData.getPressure() != null) {
                 double pressure = solData.getPressure().getAverage();
                 pressureText.setText(String.format("🌪️ %.1f Pa", pressure));
