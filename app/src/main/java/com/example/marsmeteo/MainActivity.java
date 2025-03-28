@@ -5,20 +5,33 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.content.Context;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.android.volley.toolbox.Volley;
+import com.example.marsmeteo.adapter.WeatherAdapter;
+import com.example.marsmeteo.api.NasaApiClient;
 import com.example.marsmeteo.model.MarsWeatherData;
 import com.example.marsmeteo.model.MarsWeatherData.SolData;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.Response;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
     private static final String TAG = "MainActivity";
@@ -26,6 +39,10 @@ public class MainActivity extends AppCompatActivity {
     private Button robotButton;
     private RequestQueue requestQueue;
     private static final String NASA_API_URL = "https://api.nasa.gov/insight_weather/?api_key=BhayclsiilOrFkHcRxSYpCxIMnrqA5Y3rPfoM4um&feedtype=json&ver=1.0";
+    private ListView weatherListView;
+    private ProgressBar loadingProgressBar;
+    private WeatherAdapter adapter;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -36,6 +53,11 @@ public class MainActivity extends AppCompatActivity {
 
         historyButton = findViewById(R.id.historyButton);
         robotButton = findViewById(R.id.robotButton);
+        weatherListView = findViewById(R.id.weatherListView);
+        loadingProgressBar = findViewById(R.id.loadingProgressBar);
+
+        adapter = new WeatherAdapter(this, new ArrayList<>());
+        weatherListView.setAdapter(adapter);
 
         historyButton.setOnClickListener(v -> {
             if (WeatherDataManager.getInstance().hasData()) {
@@ -59,89 +81,71 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadMarsWeather() {
-        if (!isNetworkAvailable()) {
-            Toast.makeText(this, "Pas de connexion Internet disponible", Toast.LENGTH_LONG).show();
-            return;
-        }
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        weatherListView.setVisibility(View.GONE);
 
-        // Désactiver le bouton pendant le chargement
-        historyButton.setEnabled(false);
-        Toast.makeText(this, "Chargement des données...", Toast.LENGTH_SHORT).show();
-
-        JsonObjectRequest request = new JsonObjectRequest(
-            Request.Method.GET,
-            NASA_API_URL,
-            null,
-            response -> {
-                try {
-                    Log.d(TAG, "Réponse reçue: " + response.toString());
-                    
-                    Gson gson = new GsonBuilder()
-                        .setLenient()
-                        .create();
-                    
-                    MarsWeatherData weatherData = gson.fromJson(response.toString(), MarsWeatherData.class);
-                    
-                    if (weatherData != null && weatherData.getSolKeys() != null && !weatherData.getSolKeys().isEmpty()) {
-                        Log.d(TAG, "Données parsées avec succès. Nombre de sols: " + weatherData.getSolKeys().size());
-                        
-                        // Vérifier que chaque sol a des données
-                        boolean hasValidData = true;
-                        for (String solKey : weatherData.getSolKeys()) {
-                            SolData solData = weatherData.getSols().get(solKey);
-                            if (solData == null || solData.getAtmosphericTemp() == null || solData.getPressure() == null) {
-                                Log.e(TAG, "Données manquantes pour le sol " + solKey);
-                                hasValidData = false;
-                                break;
-                            }
-                        }
-                        
-                        if (hasValidData) {
-                            WeatherDataManager.getInstance().setWeatherData(weatherData);
-                            Toast.makeText(MainActivity.this,
-                                "Données météo Mars téléchargées avec succès ! " +
-                                weatherData.getSolKeys().size() + " sols disponibles",
-                                Toast.LENGTH_LONG).show();
-                        } else {
-                            Toast.makeText(MainActivity.this,
-                                "Erreur : certaines données sont manquantes",
-                                Toast.LENGTH_LONG).show();
-                        }
-                    } else {
-                        Log.e(TAG, "Les données météo ou les clés de sol sont nulles");
-                        Toast.makeText(MainActivity.this,
-                            "Erreur : données météo invalides",
-                            Toast.LENGTH_LONG).show();
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "Erreur lors du traitement des données: " + e.getMessage(), e);
-                    Toast.makeText(MainActivity.this,
-                        "Erreur lors du traitement des données : " + e.getMessage(),
+        NasaApiClient.getInstance().getMarsWeather(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                Log.e(TAG, "Erreur lors de la requête API", e);
+                mainHandler.post(() -> {
+                    loadingProgressBar.setVisibility(View.GONE);
+                    Toast.makeText(MainActivity.this, 
+                        "Erreur lors du chargement des données", 
                         Toast.LENGTH_LONG).show();
-                } finally {
-                    // Réactiver le bouton
-                    historyButton.setEnabled(true);
-                }
-            },
-            error -> {
-                Log.e(TAG, "Erreur réseau: " + error.getMessage(), error);
-                String errorMessage = error.getMessage();
-                if (errorMessage == null) {
-                    errorMessage = "Erreur inconnue lors de la requête";
-                }
-                Toast.makeText(MainActivity.this, errorMessage, Toast.LENGTH_LONG).show();
-                // Réactiver le bouton
-                historyButton.setEnabled(true);
+                });
             }
-        );
 
-        request.setRetryPolicy(new com.android.volley.DefaultRetryPolicy(
-            30000, // timeout en ms (30 secondes)
-            2, // nombre max de retries
-            1.0f // multiplicateur de backoff
-        ));
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                if (!response.isSuccessful()) {
+                    mainHandler.post(() -> {
+                        loadingProgressBar.setVisibility(View.GONE);
+                        Toast.makeText(MainActivity.this,
+                            "Erreur serveur: " + response.code(),
+                            Toast.LENGTH_LONG).show();
+                    });
+                    return;
+                }
 
-        requestQueue.add(request);
+                try {
+                    WeatherDataManager weatherManager = WeatherDataManager.getInstance();
+                    if (!weatherManager.hasData()) {
+                        throw new IOException("Pas de données disponibles");
+                    }
+
+                    // Récupérer les sols
+                    JSONArray solKeys = weatherManager.getSolKeys();
+                    if (solKeys == null) {
+                        throw new IOException("Pas de sols disponibles");
+                    }
+
+                    // Créer la liste des sols
+                    final List<String> sols = new ArrayList<>();
+                    for (int i = 0; i < solKeys.length(); i++) {
+                        sols.add(solKeys.getString(i));
+                    }
+
+                    // Mettre à jour l'UI
+                    mainHandler.post(() -> {
+                        loadingProgressBar.setVisibility(View.GONE);
+                        weatherListView.setVisibility(View.VISIBLE);
+                        adapter.clear();
+                        adapter.addAll(sols);
+                        adapter.notifyDataSetChanged();
+                    });
+
+                } catch (Exception e) {
+                    Log.e(TAG, "Erreur lors du traitement des données", e);
+                    mainHandler.post(() -> {
+                        loadingProgressBar.setVisibility(View.GONE);
+                        Toast.makeText(MainActivity.this,
+                            "Erreur lors du traitement des données",
+                            Toast.LENGTH_LONG).show();
+                    });
+                }
+            }
+        });
     }
 
     @Override

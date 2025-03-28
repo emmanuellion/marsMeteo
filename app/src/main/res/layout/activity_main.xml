@@ -1,56 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/black">
-
-    <ImageView
-        android:id="@+id/marsIcon"
-        android:layout_width="120dp"
-        android:layout_height="120dp"
-        android:src="@drawable/mars_icon"
-        app:layout_constraintBottom_toTopOf="@id/titleText"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintVertical_chainStyle="packed" />
-
-    <TextView
-        android:id="@+id/titleText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:text="Quelle météo sur Mars ?"
-        android:textColor="@color/white"
-        android:textSize="24sp"
-        app:layout_constraintBottom_toTopOf="@id/historyButton"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/marsIcon" />
+    android:background="@android:color/black"
+    android:padding="16dp">
 
     <Button
         android:id="@+id/historyButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
         android:text="Historique Météo"
-        android:backgroundTint="#B87C76"
-        app:layout_constraintBottom_toTopOf="@id/robotButton"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/titleText" />
+        android:backgroundTint="#B87C76" />
 
     <Button
         android:id="@+id/robotButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_below="@id/historyButton"
+        android:layout_centerHorizontal="true"
         android:layout_marginTop="16dp"
         android:text="Contrôle Robot"
-        android:backgroundTint="#2196F3"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintRight_toRightOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/historyButton" />
+        android:backgroundTint="#2196F3" />
 
-</androidx.constraintlayout.widget.ConstraintLayout> 
+    <ProgressBar
+        android:id="@+id/loadingProgressBar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:visibility="gone" />
+
+    <ListView
+        android:id="@+id/weatherListView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/robotButton"
+        android:layout_marginTop="16dp"
+        android:divider="@android:color/darker_gray"
+        android:dividerHeight="1dp"
+        android:visibility="gone" />
+
+</RelativeLayout> 

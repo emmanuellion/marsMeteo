@@ -1,48 +1,66 @@
 package com.example.marsmeteo;
 
-import android.content.Intent;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.util.Log;
 import android.view.View;
-import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
-import com.example.marsmeteo.adapter.SolAdapter;
-import com.example.marsmeteo.model.MarsWeatherData;
+import com.example.marsmeteo.adapter.WeatherAdapter;
+import org.json.JSONArray;
+import java.util.ArrayList;
+import java.util.List;
 
 public class HistoryActivity extends AppCompatActivity {
-    private ListView solsListView;
-    private SolAdapter adapter;
+    private static final String TAG = "HistoryActivity";
+    private ListView weatherListView;
+    private ProgressBar loadingProgressBar;
+    private WeatherAdapter adapter;
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_history);
 
-        solsListView = findViewById(R.id.solsListView);
-        loadMarsWeather();
+        weatherListView = findViewById(R.id.weatherListView);
+        loadingProgressBar = findViewById(R.id.loadingProgressBar);
 
-        solsListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                String solKey = adapter.getItem(position);
-                Intent intent = new Intent(HistoryActivity.this, DetailActivity.class);
-                intent.putExtra(DetailActivity.EXTRA_SOL, solKey);
-                startActivity(intent);
+        loadingProgressBar.setVisibility(View.VISIBLE);
+        weatherListView.setVisibility(View.GONE);
+
+        try {
+            WeatherDataManager weatherManager = WeatherDataManager.getInstance();
+            if (!weatherManager.hasData()) {
+                throw new Exception("Pas de données disponibles");
             }
-        });
-    }
 
-    private void loadMarsWeather() {
-        WeatherDataManager weatherManager = WeatherDataManager.getInstance();
-        if (!weatherManager.hasData()) {
-            Toast.makeText(this, "Aucune donnée météo disponible. Veuillez retourner à l'écran principal.", Toast.LENGTH_LONG).show();
+            // Récupérer les sols
+            JSONArray solKeys = weatherManager.getSolKeys();
+            if (solKeys == null) {
+                throw new Exception("Pas de sols disponibles");
+            }
+
+            // Créer la liste des sols
+            List<String> sols = new ArrayList<>();
+            for (int i = 0; i < solKeys.length(); i++) {
+                sols.add(solKeys.getString(i));
+            }
+
+            // Initialiser l'adapter
+            adapter = new WeatherAdapter(this, sols);
+            weatherListView.setAdapter(adapter);
+
+            loadingProgressBar.setVisibility(View.GONE);
+            weatherListView.setVisibility(View.VISIBLE);
+
+        } catch (Exception e) {
+            Log.e(TAG, "Erreur lors du chargement des données", e);
+            Toast.makeText(this, "Erreur lors du chargement des données", Toast.LENGTH_LONG).show();
             finish();
-            return;
         }
-
-        MarsWeatherData weatherData = weatherManager.getWeatherData();
-        adapter = new SolAdapter(this, weatherData.getSolKeys(), weatherData.getSols());
-        solsListView.setAdapter(adapter);
     }
 } 
