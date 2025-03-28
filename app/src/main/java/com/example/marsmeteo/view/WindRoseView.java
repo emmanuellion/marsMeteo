@@ -7,106 +7,141 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.util.AttributeSet;
 import android.view.View;
-import androidx.annotation.Nullable;
+import org.json.JSONObject;
+import java.util.HashMap;
 import java.util.Map;
 
 public class WindRoseView extends View {
     private Paint circlePaint;
     private Paint trianglePaint;
-    private Paint linePaint;
-    private float maxValue = 0f;
-    private Map<Integer, Float> windDirections;
+    private Paint gridPaint;
+    private Map<String, Integer> windCounts;
+    private int maxCount;
 
     public WindRoseView(Context context) {
         super(context);
         init();
     }
 
-    public WindRoseView(Context context, @Nullable AttributeSet attrs) {
+    public WindRoseView(Context context, AttributeSet attrs) {
         super(context, attrs);
         init();
     }
 
     private void init() {
+        // Initialiser le Paint pour le cercle extérieur
         circlePaint = new Paint();
         circlePaint.setColor(Color.GRAY);
         circlePaint.setStyle(Paint.Style.STROKE);
-        circlePaint.setStrokeWidth(2f);
+        circlePaint.setStrokeWidth(2);
         circlePaint.setAntiAlias(true);
 
+        // Initialiser le Paint pour les triangles
         trianglePaint = new Paint();
-        trianglePaint.setColor(Color.parseColor("#64B5F6")); // Bleu clair
+        trianglePaint.setColor(Color.rgb(135, 206, 235)); // Bleu ciel
         trianglePaint.setStyle(Paint.Style.FILL);
         trianglePaint.setAntiAlias(true);
 
-        linePaint = new Paint();
-        linePaint.setColor(Color.GRAY);
-        linePaint.setStyle(Paint.Style.STROKE);
-        linePaint.setStrokeWidth(1f);
-        linePaint.setAntiAlias(true);
+        // Initialiser le Paint pour la grille
+        gridPaint = new Paint();
+        gridPaint.setColor(Color.DKGRAY);
+        gridPaint.setStyle(Paint.Style.STROKE);
+        gridPaint.setStrokeWidth(1);
+        gridPaint.setAntiAlias(true);
+
+        windCounts = new HashMap<>();
     }
 
-    public void setWindData(Map<Integer, Float> windDirections) {
-        this.windDirections = windDirections;
-        maxValue = 0f;
-        for (Float value : windDirections.values()) {
-            if (value > maxValue) maxValue = value;
+    public void setWindData(JSONObject windData) {
+        try {
+            windCounts.clear();
+            maxCount = 0;
+
+            // Parcourir les 16 directions
+            for (int i = 0; i < 16; i++) {
+                String key = String.valueOf(i);
+                if (windData.has(key)) {
+                    JSONObject direction = windData.getJSONObject(key);
+                    int count = direction.getInt("ct");
+                    windCounts.put(key, count);
+                    maxCount = Math.max(maxCount, count);
+                }
+            }
+
+            invalidate(); // Redessiner la vue
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        invalidate();
     }
 
     @Override
     protected void onDraw(Canvas canvas) {
         super.onDraw(canvas);
-        if (windDirections == null) return;
 
         int width = getWidth();
         int height = getHeight();
-        float centerX = width / 2f;
-        float centerY = height / 2f;
-        float radius = Math.min(width, height) / 2f - 20f;
+        int centerX = width / 2;
+        int centerY = height / 2;
+        int radius = Math.min(width, height) / 2 - 20; // Marge de 20px
+
+        // Dessiner les cercles concentriques
+        for (int i = 1; i <= 4; i++) {
+            float currentRadius = radius * i / 4f;
+            canvas.drawCircle(centerX, centerY, currentRadius, gridPaint);
+        }
+
+        // Dessiner les lignes de la grille (N, S, E, O)
+        canvas.drawLine(centerX, centerY - radius, centerX, centerY + radius, gridPaint); // N-S
+        canvas.drawLine(centerX - radius, centerY, centerX + radius, centerY, gridPaint); // E-O
+
+        // Dessiner les lignes diagonales
+        double diagonal = radius * Math.cos(Math.PI / 4);
+        canvas.drawLine(
+            (float)(centerX - diagonal), (float)(centerY - diagonal),
+            (float)(centerX + diagonal), (float)(centerY + diagonal),
+            gridPaint
+        );
+        canvas.drawLine(
+            (float)(centerX - diagonal), (float)(centerY + diagonal),
+            (float)(centerX + diagonal), (float)(centerY - diagonal),
+            gridPaint
+        );
 
         // Dessiner le cercle extérieur
         canvas.drawCircle(centerX, centerY, radius, circlePaint);
 
-        // Dessiner les lignes de division (N, S, E, O)
-        canvas.drawLine(centerX, centerY - radius, centerX, centerY + radius, linePaint);
-        canvas.drawLine(centerX - radius, centerY, centerX + radius, centerY, linePaint);
-
         // Dessiner les triangles pour chaque direction
-        for (Map.Entry<Integer, Float> entry : windDirections.entrySet()) {
-            int direction = entry.getKey();
-            float value = entry.getValue();
-            float angle = direction * 22.5f; // 360° / 16 directions = 22.5°
-            float length = (value / maxValue) * radius;
+        for (int i = 0; i < 16; i++) {
+            String key = String.valueOf(i);
+            if (windCounts.containsKey(key)) {
+                int count = windCounts.get(key);
+                float percentage = count / (float) maxCount;
+                float angle = (float) (i * 22.5 * Math.PI / 180); // 22.5 degrés = 360/16
+                
+                // Calculer les points du triangle
+                float triangleHeight = radius * percentage;
+                float triangleWidth = (float) (triangleHeight * Math.tan(Math.PI / 16)); // Angle de 11.25 degrés
 
-            drawTriangle(canvas, centerX, centerY, angle, length);
+                // Sauvegarder l'état du canvas
+                canvas.save();
+                
+                // Translater au centre et pivoter
+                canvas.translate(centerX, centerY);
+                // Pour un vent venant du Nord (0°), on pointe vers le Sud (180°)
+                // Pour un vent venant de l'Est (90°), on pointe vers l'Ouest (270°)
+                canvas.rotate(i * 22.5f);  // Rotation positive dans le sens horaire + 180° pour pointer dans la direction opposée
+
+                // Dessiner le triangle
+                Path path = new Path();
+                path.moveTo(0, 0);
+                path.lineTo(-triangleWidth, -triangleHeight);
+                path.lineTo(triangleWidth, -triangleHeight);
+                path.close();
+                canvas.drawPath(path, trianglePaint);
+
+                // Restaurer l'état du canvas
+                canvas.restore();
+            }
         }
-    }
-
-    private void drawTriangle(Canvas canvas, float centerX, float centerY, float angle, float length) {
-        float angleRad = (float) Math.toRadians(angle - 90); // -90 pour aligner avec le Nord
-        float baseWidth = length * 0.2f; // Largeur de la base du triangle
-
-        Path path = new Path();
-        path.moveTo(centerX, centerY);
-
-        // Calculer les points du triangle
-        float tipX = centerX + (float) (length * Math.cos(angleRad));
-        float tipY = centerY + (float) (length * Math.sin(angleRad));
-        
-        float perpAngle = angleRad + (float) Math.PI/2;
-        float leftX = centerX + (float) (baseWidth * Math.cos(perpAngle));
-        float leftY = centerY + (float) (baseWidth * Math.sin(perpAngle));
-        float rightX = centerX - (float) (baseWidth * Math.cos(perpAngle));
-        float rightY = centerY - (float) (baseWidth * Math.sin(perpAngle));
-
-        // Dessiner le triangle
-        path.moveTo(leftX, leftY);
-        path.lineTo(tipX, tipY);
-        path.lineTo(rightX, rightY);
-        path.close();
-
-        canvas.drawPath(path, trianglePaint);
     }
 } 

@@ -2,11 +2,16 @@ package com.example.marsmeteo;
 
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
+import com.example.marsmeteo.view.WindRoseView;
 import org.json.JSONObject;
 import org.json.JSONException;
+import org.json.JSONArray;
 
 public class DetailActivity extends AppCompatActivity {
     private static final String TAG = "DetailActivity";
@@ -16,51 +21,106 @@ public class DetailActivity extends AppCompatActivity {
     private TextView temperatureDetailText;
     private TextView pressureDetailText;
     private TextView windDetailText;
+    private WindRoseView windRoseView;
+    private ScrollView scrollView;
+    private LinearLayout contentLayout;
+    private String currentSol;
+    private WeatherDataManager weatherDataManager;
+    private boolean isLoading = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
 
+        weatherDataManager = WeatherDataManager.getInstance();
+        scrollView = findViewById(R.id.scrollView);
+        contentLayout = findViewById(R.id.contentLayout);
+
+        // Récupérer le sol depuis l'intent
+        currentSol = getIntent().getStringExtra("sol");
+        
         // Initialiser les vues
         solTitleText = findViewById(R.id.solTitleText);
         temperatureDetailText = findViewById(R.id.temperatureDetailText);
         pressureDetailText = findViewById(R.id.pressureDetailText);
         windDetailText = findViewById(R.id.windDetailText);
+        windRoseView = findViewById(R.id.windRoseView);
 
-        // Récupérer le numéro de sol
-        String solKey = getIntent().getStringExtra(EXTRA_SOL);
-        if (solKey == null) {
-            Log.e(TAG, "Pas de numéro de sol fourni");
-            Toast.makeText(this, "Erreur : numéro de sol manquant", Toast.LENGTH_LONG).show();
-            finish();
-            return;
-        }
+        // Charger les données initiales
+        loadSolData(currentSol);
 
-        // Charger et afficher les données
-        loadSolDetails(solKey);
+        // Configurer le ScrollView pour détecter le défilement
+        scrollView.getViewTreeObserver().addOnScrollChangedListener(() -> {
+            if (isLoading) return;
+
+            View view = scrollView.getChildAt(scrollView.getChildCount() - 1);
+            int diff = (view.getBottom() - (scrollView.getHeight() + scrollView.getScrollY()));
+
+            // Si on atteint le bas
+            if (diff == 0) {
+                isLoading = true;
+                loadNextSol();
+            }
+
+            // Si on atteint le haut
+            if (scrollView.getScrollY() == 0) {
+                isLoading = true;
+                loadPreviousSol();
+            }
+        });
     }
 
-    private void loadSolDetails(String solKey) {
+    private void loadNextSol() {
         try {
-            WeatherDataManager weatherManager = WeatherDataManager.getInstance();
-            if (!weatherManager.hasData()) {
-                Toast.makeText(this, "Erreur : données météo non disponibles", Toast.LENGTH_LONG).show();
-                finish();
-                return;
+            JSONObject data = weatherDataManager.getData();
+            JSONArray solKeys = data.getJSONArray("sol_keys");
+            
+            for (int i = 0; i < solKeys.length(); i++) {
+                if (solKeys.getString(i).equals(currentSol) && i < solKeys.length() - 1) {
+                    String nextSol = solKeys.getString(i + 1);
+                    currentSol = nextSol;
+                    loadSolData(nextSol);
+                    break;
+                }
             }
+        } catch (Exception e) {
+            Log.e("DetailActivity", "Error loading next sol", e);
+            Toast.makeText(this, "Erreur lors du chargement du sol suivant", Toast.LENGTH_SHORT).show();
+        } finally {
+            isLoading = false;
+        }
+    }
 
-            // Récupérer les données du sol
-            JSONObject solData = weatherManager.getSolData(solKey);
-            if (solData == null) {
-                Toast.makeText(this, "Erreur : données non trouvées pour le Sol " + solKey, Toast.LENGTH_LONG).show();
-                finish();
-                return;
+    private void loadPreviousSol() {
+        try {
+            JSONObject data = weatherDataManager.getData();
+            JSONArray solKeys = data.getJSONArray("sol_keys");
+            
+            for (int i = 0; i < solKeys.length(); i++) {
+                if (solKeys.getString(i).equals(currentSol) && i > 0) {
+                    String previousSol = solKeys.getString(i - 1);
+                    currentSol = previousSol;
+                    loadSolData(previousSol);
+                    break;
+                }
             }
+        } catch (Exception e) {
+            Log.e("DetailActivity", "Error loading previous sol", e);
+            Toast.makeText(this, "Erreur lors du chargement du sol précédent", Toast.LENGTH_SHORT).show();
+        } finally {
+            isLoading = false;
+        }
+    }
+
+    private void loadSolData(String sol) {
+        try {
+            JSONObject data = weatherDataManager.getData();
+            JSONObject solData = data.getJSONObject(sol);
 
             // Mettre à jour le titre avec la saison
-            String season = weatherManager.getSeason(solKey);
-            String seasonInfo = String.format("Sol %s\n%s", solKey, season != null ? season : "");
+            String season = weatherDataManager.getSeason(sol);
+            String seasonInfo = String.format("Sol %s\n%s", sol, season != null ? season : "");
             solTitleText.setText(seasonInfo);
 
             // Température
@@ -132,6 +192,9 @@ public class DetailActivity extends AppCompatActivity {
                         mostCommon.optInt("ct", 0)
                     ));
                 }
+                
+                // Mettre à jour la rose des vents
+                windRoseView.setWindData(windDirData);
             }
 
             windDetailText.setText(windText.toString());
