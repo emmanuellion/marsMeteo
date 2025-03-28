@@ -119,4 +119,8 @@ public class WeatherDataManager {
         }
         return null;
     }
+
+    public JSONObject getData() {
+        return rawData;
+    }
 } 

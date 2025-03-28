@@ -27,6 +27,7 @@ public class DetailActivity extends AppCompatActivity {
     private String currentSol;
     private WeatherDataManager weatherDataManager;
     private boolean isLoading = false;
+    private LinearLayout mainContainer;  // Conteneur principal pour empiler les vues
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,36 +36,35 @@ public class DetailActivity extends AppCompatActivity {
 
         weatherDataManager = WeatherDataManager.getInstance();
         scrollView = findViewById(R.id.scrollView);
-        contentLayout = findViewById(R.id.contentLayout);
+        mainContainer = findViewById(R.id.mainContainer);
 
         // Récupérer le sol depuis l'intent
-        currentSol = getIntent().getStringExtra("sol");
-        
-        // Initialiser les vues
-        solTitleText = findViewById(R.id.solTitleText);
-        temperatureDetailText = findViewById(R.id.temperatureDetailText);
-        pressureDetailText = findViewById(R.id.pressureDetailText);
-        windDetailText = findViewById(R.id.windDetailText);
-        windRoseView = findViewById(R.id.windRoseView);
+        currentSol = getIntent().getStringExtra(EXTRA_SOL);
+        if (currentSol == null) {
+            Log.e(TAG, "Pas de numéro de sol fourni");
+            Toast.makeText(this, "Erreur : numéro de sol manquant", Toast.LENGTH_LONG).show();
+            finish();
+            return;
+        }
 
         // Charger les données initiales
-        loadSolData(currentSol);
+        addSolView(currentSol);
 
         // Configurer le ScrollView pour détecter le défilement
-        scrollView.getViewTreeObserver().addOnScrollChangedListener(() -> {
+        scrollView.setOnScrollChangeListener((v, scrollX, scrollY, oldScrollX, oldScrollY) -> {
             if (isLoading) return;
 
-            View view = scrollView.getChildAt(scrollView.getChildCount() - 1);
-            int diff = (view.getBottom() - (scrollView.getHeight() + scrollView.getScrollY()));
+            int totalHeight = scrollView.getChildAt(0).getHeight();
+            int scrollViewHeight = scrollView.getHeight();
 
-            // Si on atteint le bas
-            if (diff == 0) {
+            // Chargement vers le bas
+            if (scrollY + scrollViewHeight > totalHeight - 200) {
                 isLoading = true;
                 loadNextSol();
             }
 
-            // Si on atteint le haut
-            if (scrollView.getScrollY() == 0) {
+            // Chargement vers le haut
+            if (scrollY < 200) {
                 isLoading = true;
                 loadPreviousSol();
             }
@@ -80,7 +80,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (solKeys.getString(i).equals(currentSol) && i < solKeys.length() - 1) {
                     String nextSol = solKeys.getString(i + 1);
                     currentSol = nextSol;
-                    loadSolData(nextSol);
+                    addSolView(nextSol);
                     break;
                 }
             }
@@ -101,7 +101,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (solKeys.getString(i).equals(currentSol) && i > 0) {
                     String previousSol = solKeys.getString(i - 1);
                     currentSol = previousSol;
-                    loadSolData(previousSol);
+                    addSolViewAtTop(previousSol);
                     break;
                 }
             }
@@ -113,8 +113,26 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    private void loadSolData(String sol) {
+    private void addSolView(String sol) {
+        View solView = getLayoutInflater().inflate(R.layout.item_sol_detail, mainContainer, false);
+        setupSolView(solView, sol);
+        mainContainer.addView(solView);
+    }
+
+    private void addSolViewAtTop(String sol) {
+        View solView = getLayoutInflater().inflate(R.layout.item_sol_detail, mainContainer, false);
+        setupSolView(solView, sol);
+        mainContainer.addView(solView, 0);
+    }
+
+    private void setupSolView(View view, String sol) {
         try {
+            TextView solTitleText = view.findViewById(R.id.solTitleText);
+            TextView temperatureDetailText = view.findViewById(R.id.temperatureDetailText);
+            TextView pressureDetailText = view.findViewById(R.id.pressureDetailText);
+            TextView windDetailText = view.findViewById(R.id.windDetailText);
+            WindRoseView windRoseView = view.findViewById(R.id.windRoseView);
+
             JSONObject data = weatherDataManager.getData();
             JSONObject solData = data.getJSONObject(sol);
 
@@ -202,7 +220,6 @@ public class DetailActivity extends AppCompatActivity {
         } catch (Exception e) {
             Log.e(TAG, "Erreur lors du chargement des détails: " + e.getMessage(), e);
             Toast.makeText(this, "Erreur lors du chargement des détails", Toast.LENGTH_LONG).show();
-            finish();
         }
     }
 }

@@ -6,50 +6,9 @@
     android:background="@android:color/black">
 
     <LinearLayout
-        android:id="@+id/contentLayout"
+        android:id="@+id/mainContainer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="16dp">
+        android:orientation="vertical"/>
 
-        <TextView
-            android:id="@+id/solTitleText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="24sp"
-            android:textColor="@android:color/white"
-            android:gravity="center"
-            android:layout_marginBottom="24dp"/>
-
-        <TextView
-            android:id="@+id/temperatureDetailText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
-            android:layout_marginBottom="24dp"/>
-
-        <TextView
-            android:id="@+id/pressureDetailText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
-            android:layout_marginBottom="24dp"/>
-
-        <TextView
-            android:id="@+id/windDetailText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:textSize="18sp"
-            android:textColor="@android:color/white"
-            android:layout_marginBottom="24dp"/>
-
-        <com.example.marsmeteo.view.WindRoseView
-            android:id="@+id/windRoseView"
-            android:layout_width="match_parent"
-            android:layout_height="300dp"
-            android:layout_marginTop="16dp"/>
-
-    </LinearLayout>
 </ScrollView> 
